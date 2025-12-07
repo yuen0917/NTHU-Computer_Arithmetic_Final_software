@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg
+
+# Generated files
+weights/
+data/
+selu_lut.txt
+
+# System files
+__MACOSX/
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Dependencies (lock files)
+uv.lock
+poetry.lock
+requirements.txt
+
+# Logs
+*.log
+
