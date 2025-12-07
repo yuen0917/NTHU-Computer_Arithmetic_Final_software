@@ -16,6 +16,7 @@ htmlcov/
 weights/
 data/
 selu_lut.txt
+test_image*.txt
 
 # System files
 __MACOSX/
