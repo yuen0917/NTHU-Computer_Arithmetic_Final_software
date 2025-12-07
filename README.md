@@ -8,6 +8,7 @@
 - [模型架構](#模型架構)
 - [量化架構](#量化架構)
 - [安裝與使用](#安裝與使用)
+- [查找表生成](#查找表生成)
 - [文件結構](#文件結構)
 - [性能比較](#性能比較)
 
@@ -32,7 +33,7 @@
 
 ### 原始架構（Float32）
 
-```
+```text
 Input: (N, 1, 28, 28)
   ↓
 Conv2d(1→8, kernel=3, padding=1) + ReLU
@@ -174,7 +175,7 @@ $$Z = q_{min} - \frac{r_{min}}{S}$$
 
 ### 量化架構流程
 
-```
+```text
 Input: (N, 1, 28, 28) [float32]
   ↓ Quantize
 Input_q: (N, 1, 28, 28) [int8]
@@ -297,23 +298,75 @@ python quantized_model_improved.py
 
 這會比較 LUT 方法和近似方法的性能差異。
 
+### 診斷工具
+
+```bash
+# 檢查 PyTorch CUDA 環境
+python test.py
+```
+
+此工具會顯示 PyTorch 版本、CUDA 可用性、GPU 資訊等診斷資訊，幫助排查訓練環境問題。
+
+## 🔍 查找表生成
+
+查找表（Look-Up Table, LUT）用於在量化模型中實現非線性激活函數（SELU、GELU）。本項目提供了生成這些查找表的腳本。
+
+### 生成查找表
+
+如果需要重新生成 SELU 或 GELU 的查找表檔案，可以使用以下腳本：
+
+```bash
+# 生成 SELU 查找表
+python generate_selu_lut.py
+
+# 生成 GELU 查找表
+python generate_gelu_lut.py
+```
+
+這些腳本會生成 `selu_lut.txt` 和 `gelu_lut.txt` 檔案，用於量化模型中的激活函數查找表。查找表以十六進制格式儲存，每個值對應 int8 範圍（-128 到 127）的輸入。
+
+### 查找表格式
+
+- **輸入範圍**：int8 範圍（-128 到 127，共 256 個值）
+- **計算方式**：對每個整數輸入值，計算對應的激活函數輸出
+- **量化輸出**：將浮點輸出量化回 int8 範圍
+- **儲存格式**：十六進制格式（每行一個值），方便硬體實現讀取
+
+**SELU 查找表**：
+
+- 使用標準 SELU 公式：$\lambda = 1.0507$, $\alpha = 1.6733$
+- 對負值使用指數函數：$\alpha(e^x - 1)$
+
+**GELU 查找表**：
+
+- 使用近似公式：$0.5x(1 + \tanh(\sqrt{2/\pi}(x + 0.044715x^3)))$
+- 適合硬體實現的平滑激活函數
+
 ## 📁 文件結構
 
-```
-cnn/
+```text
+mnist/
 ├── main.py                      # 核心 CNN 實現（浮點版本）
 ├── train.py                     # PyTorch 訓練腳本（自動量化）
 ├── predict.py                   # 預測腳本（默認使用量化模型）
+├── test.py                      # PyTorch CUDA 診斷工具
 ├── quantized_model.py           # 基礎量化實現
 ├── quantized_model_improved.py  # 改進的量化實現（支援 GELU/SELU）
+├── generate_selu_lut.py         # SELU 查找表生成腳本
+├── generate_gelu_lut.py         # GELU 查找表生成腳本
 ├── pyproject.toml               # 項目配置
+├── .gitignore                   # Git 忽略檔案配置
 ├── README.md                    # 本文件
-├── weights/
+├── weights/                     # 權重檔案目錄（自動生成，不上傳）
 │   ├── mnist_weights.npz              # 訓練好的浮點權重
 │   └── mnist_weights_quantized.npz   # 量化權重（自動生成）
-└── data/
-    └── MNIST/                   # MNIST 數據集（自動下載）
+├── data/                        # 數據集目錄（自動下載，不上傳）
+│   └── MNIST/                   # MNIST 數據集
+├── selu_lut.txt                 # SELU 查找表（自動生成，不上傳）
+└── gelu_lut.txt                 # GELU 查找表（自動生成，不上傳）
 ```
+
+**注意**：`weights/`、`data/`、`selu_lut.txt`、`gelu_lut.txt` 等生成的檔案已配置在 `.gitignore` 中，不會上傳到版本控制系統。
 
 ## 📊 性能比較
 
@@ -347,6 +400,7 @@ cnn/
 2. **激活量化**：中間激活值可選量化（當前實現為混合精度）
 3. **查找表（LUT）**：用於 GELU 和 SELU 的整數域計算
 4. **分段線性近似**：替代 LUT 的輕量級方法
+
 
 ### 激活函數處理
 
