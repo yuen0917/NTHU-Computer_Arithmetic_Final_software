@@ -17,6 +17,8 @@ weights/
 data/
 selu_lut.txt
 test_image*.txt
+all_test_images.txt
+all_labels.txt
 
 # System files
 __MACOSX/

@@ -2,7 +2,7 @@
 
 從零開始實現的卷積神經網絡（CNN），使用純 NumPy 進行推理，支援整數量化（Quantization）以提升效率。
 
-## 📋 目錄
+## 目錄
 
 - [項目簡介](#項目簡介)
 - [模型架構](#模型架構)
@@ -12,7 +12,7 @@
 - [文件結構](#文件結構)
 - [性能比較](#性能比較)
 
-## 🎯 項目簡介
+## 項目簡介
 
 本項目實現了一個用於 MNIST 手寫數字識別（0-9）的 CNN 模型，具有以下特點：
 
@@ -29,7 +29,7 @@
 - **標籤**：整數 0-9
 - **評估指標**：Top-1 Accuracy
 
-## 🏗️ 模型架構
+## 模型架構
 
 ### 原始架構（Float32）
 
@@ -103,7 +103,7 @@ $$y = xW^T + b$$
 
 $$p_i = \frac{e^{x_i - \max(x)}}{\sum_{j} e^{x_j - \max(x)}}$$
 
-## 🔢 量化架構
+## 量化架構
 
 ### 量化原理
 
@@ -205,7 +205,7 @@ Softmax
   → (N, 10) [float32]
 ```
 
-## 🚀 安裝與使用
+## 安裝與使用
 
 ### 環境要求
 
@@ -225,7 +225,7 @@ uv sync
 pip install -r requirements.txt
 ```
 
-### 訓練模型
+### 訓練模型（浮點）
 
 ```bash
 python train.py
@@ -307,6 +307,32 @@ python test.py
 
 此工具會顯示 PyTorch 版本、CUDA 可用性、GPU 資訊等診斷資訊，幫助排查訓練環境問題。
 
+### 訓練與預測（整數域／硬體對齊）
+
+整數感知訓練：輸入維持 0~255 範圍，便於硬體對齊
+
+```bash
+python train_integer.py
+```
+
+- 產出 Verilog 友善的權重文字檔：`weights/conv1_relu.txt`、`conv2_selu.txt`、`conv3_gelu.txt`、`fc_weights.txt`、`fc_biases.txt`
+
+整數域批次預測（快速驗證權重與 LUT）：
+
+```bash
+python predict_integer.py
+```
+
+- 讀取上述權重與 `selu_lut.txt`、`gelu_lut.txt`，跑硬體等效流程 (Conv→ReLU/SELU/GELU→MaxPool→GAP→FC)，輸出整體正確率
+
+單張除錯（查看中間層）：
+
+```bash
+python verify_one.py
+```
+
+- 讀取 `test_image.txt` 與權重/LUT，逐層列印特徵圖與 GAP/FC，方便與 RTL 波形比對
+
 ### 轉換權重檔案為文字檔（Testbench 用）
 
 將量化權重 NPZ 檔案轉換為文字檔，方便在 Verilog/SystemVerilog testbench 中使用：
@@ -349,39 +375,26 @@ initial $readmemh("weights/fc_biases.txt", fc_biases);
 
 ### 轉換 MNIST 圖片為文字檔（Testbench 用）
 
-將單張 MNIST 圖片轉換為文字檔，方便在 Verilog/SystemVerilog testbench 中使用：
+單張輸出：
 
 ```bash
-# 基本用法：轉換測試集第 0 張圖片為十六進制格式
-python convert_mnist_to_txt.py
+# 轉換測試集第 0 張圖片，十六進制
+python generate_mnist_to_txt.py
 
-# 指定圖片索引和輸出檔案
-python convert_mnist_to_txt.py -i 5 -o test_image.txt
+# 指定索引、格式、輸出檔名
+python generate_mnist_to_txt.py -i 5 -f bin -o img5_bin.txt
 
-# 使用十進制格式
-python convert_mnist_to_txt.py -f dec -o test_image_dec.txt
-
-# 使用二進制格式
-python convert_mnist_to_txt.py -f bin -o test_image_bin.txt
-
-# 使用原始像素值（0-255，不進行正規化）
-python convert_mnist_to_txt.py --no-normalize -o test_image_raw.txt
-
-# 輸出為 28x28 矩陣格式（而非扁平化）
-python convert_mnist_to_txt.py --matrix -o test_image_matrix.txt
-
-# 從訓練集讀取圖片
-python convert_mnist_to_txt.py -d train -i 10 -o train_image.txt
+# 使用原始像素（不正規化）、保留矩陣格式
+python generate_mnist_to_txt.py --no-normalize --matrix -o img5_mat.txt
 ```
 
-**參數說明**：
+批次輸出（前 100 張，含標籤）：
 
-- `-i, --index`: 圖片在資料集中的索引（預設：0）
-- `-d, --dataset`: 資料集類型，`train` 或 `test`（預設：`test`）
-- `-o, --output`: 輸出檔案路徑（預設：`mnist_image.txt`）
-- `-f, --format`: 輸出格式，`hex`（十六進制）、`dec`（十進制）或 `bin`（二進制）（預設：`hex`）
-- `--no-normalize`: 使用原始像素值（0-255），而非正規化後的值
-- `--matrix`: 輸出為 28x28 矩陣格式，而非扁平化的 784 個值
+```bash
+python generate_batch_mnist_to_txt.py
+```
+
+會產生 `all_test_images.txt`（每行 1 byte，十六進制）與 `all_labels.txt`（每行 1 label，十六進制），方便 Verilog/FPGA 批次測試。
 
 **輸出格式**：
 
@@ -400,7 +413,7 @@ python convert_mnist_to_txt.py -d train -i 10 -o train_image.txt
 ...
 ```
 
-## 🔍 查找表生成
+## 查找表生成
 
 查找表（Look-Up Table, LUT）用於在量化模型中實現非線性激活函數（SELU、GELU）。本項目提供了生成這些查找表的腳本。
 
@@ -435,31 +448,36 @@ python generate_gelu_lut.py
 - 使用近似公式：$0.5x(1 + \tanh(\sqrt{2/\pi}(x + 0.044715x^3)))$
 - 適合硬體實現的平滑激活函數
 
-## 📁 文件結構
+## 文件結構
 
 ```text
 mnist/
 ├── main.py                      # 核心 CNN 實現（浮點版本）
 ├── train.py                     # PyTorch 訓練腳本（自動量化）
 ├── predict.py                   # 預測腳本（默認使用量化模型）
+├── predict_integer.py           # 整數域批次預測（硬體等效流程）
 ├── test.py                      # PyTorch CUDA 診斷工具
 ├── quantized_model.py           # 基礎量化實現
 ├── quantized_model_improved.py  # 改進的量化實現（支援 GELU/SELU）
+├── train.py                     # 浮點訓練（自動量化）
+├── train_integer.py             # 整數感知訓練，直接輸出 Verilog 權重 txt
 ├── generate_selu_lut.py         # SELU 查找表生成腳本
 ├── generate_gelu_lut.py         # GELU 查找表生成腳本
 ├── transfer_npz_txt.py          # 權重 NPZ 轉文字檔工具（Testbench 用）
-├── convert_mnist_to_txt.py      # MNIST 圖片轉文字檔工具（Testbench 用）
+├── generate_mnist_to_txt.py     # 單張 MNIST 轉文字檔
+├── generate_batch_mnist_to_txt.py # 批次 MNIST 轉文字檔（圖像+標籤）
+├── verify_one.py                # 單張硬體流程除錯（列印中間層）
 ├── pyproject.toml               # 項目配置
 ├── .gitignore                   # Git 忽略檔案配置
 ├── README.md                    # 本文件
 ├── weights/                     # 權重檔案目錄（自動生成，不上傳）
-│   ├── mnist_weights.npz              # 訓練好的浮點權重
+│   ├── mnist_weights.npz              # 浮點權重
 │   ├── mnist_weights_quantized.npz   # 量化權重（自動生成）
-│   ├── conv1_relu.txt                # 第一層卷積權重（文字檔，Testbench 用）
-│   ├── conv2_selu.txt                # 第二層卷積權重（文字檔，Testbench 用）
-│   ├── conv3_gelu.txt                # 第三層卷積權重（文字檔，Testbench 用）
-│   ├── fc_weights.txt                # 全連接層權重（文字檔，Testbench 用）
-│   └── fc_biases.txt                 # 全連接層偏置（文字檔，Testbench 用）
+│   ├── conv1_relu.txt                # 第一層卷積權重（Verilog）
+│   ├── conv2_selu.txt                # 第二層卷積權重（Verilog）
+│   ├── conv3_gelu.txt                # 第三層卷積權重（Verilog）
+│   ├── fc_weights.txt                # 全連接層權重（Verilog）
+│   └── fc_biases.txt                 # 全連接層偏置（Verilog，32-bit）
 ├── data/                        # 數據集目錄（自動下載，不上傳）
 │   └── MNIST/                   # MNIST 數據集
 ├── selu_lut.txt                 # SELU 查找表（自動生成，不上傳）
@@ -467,32 +485,6 @@ mnist/
 ```
 
 **注意**：`weights/`、`data/`、`selu_lut.txt`、`gelu_lut.txt` 等生成的檔案已配置在 `.gitignore` 中，不會上傳到版本控制系統。
-
-## 📊 性能比較
-
-### 模型大小
-
-| 版本                     | 大小     | 壓縮比 |
-| ------------------------ | -------- | ------ |
-| Float32                  | 24.29 KB | 1x     |
-| Quantized (int8, LUT)    | 6.57 KB  | 3.70x  |
-| Quantized (int8, Approx) | 6.07 KB  | 4.00x  |
-
-### 準確率
-
-- **訓練準確率**：92.40%
-- **測試準確率**：93.62%（完整測試集）
-- **量化後準確率**：與浮點模型 100% 一致（在小樣本測試中）
-
-### 性能優勢
-
-| 指標       | Float32 | Quantized (int8) | 改善   |
-| ---------- | ------- | ---------------- | ------ |
-| 記憶體占用 | 基準    | 1/4              | 4x     |
-| 推論速度   | 基準    | 2-4x 更快        | 2-4x   |
-| 功耗       | 基準    | 更低             | 30-50% |
-
-## 🔬 技術細節
 
 ### 量化方法
 
@@ -508,26 +500,13 @@ mnist/
 - **GELU**：使用 LUT 或分段線性近似
 - **Softmax**：在浮點域計算（最後一層）
 
-### 硬體適配
-
-量化版本特別適合：
-
-- 邊緣 AI 晶片（Google Edge TPU、Intel NCS）
-- 移動設備（手機、平板）
-- 嵌入式系統（IoT 設備）
-- FPGA 實現
-
-## 📝 參考資料
+## 參考資料
 
 - [MNIST Dataset](http://yann.lecun.com/exdb/mnist/)
 - [Quantization in Deep Learning](https://pytorch.org/docs/stable/quantization.html)
 - [GELU Paper](https://arxiv.org/abs/1606.08415)
 - [SELU Paper](https://arxiv.org/abs/1706.02515)
 
-## 📄 授權
+## 授權
 
 本項目僅用於學習和研究目的。
-
-## 🙏 致謝
-
-感謝 PyTorch 和 NumPy 社區提供的優秀工具。
