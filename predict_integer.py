@@ -9,8 +9,8 @@ import sys
 # ==========================================
 IMG_W = 28
 IMG_H = 28
-QUANT_SHIFT = 6       # Hardware Setting
-BATCH_SIZE  = 100    # Number of images to test (adjust as needed)
+QUANT_SHIFT = 7       # Hardware Setting
+BATCH_SIZE  = 500    # Number of images to test (adjust as needed)
 SAVE_IMAGE_INDEX = 10
 
 # File paths

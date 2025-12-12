@@ -4,7 +4,7 @@ import torchvision
 import torchvision.transforms as transforms
 import os
 
-BATCH_SIZE = 100  # 設定要測試的張數
+BATCH_SIZE = 500  # 設定要測試的張數
 
 def export_batch_data():
     print(f"=== Exporting {BATCH_SIZE} images for Verilog Batch Test ===")
