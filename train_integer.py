@@ -24,7 +24,7 @@ class GlobalAvgPoolCNN_PyTorch(nn.Module):
         self.fc = nn.Linear(32, 10)
 
     def forward(self, x):
-        # 注意：这里的输入 x 已经是 0.0 ~ 255.0 的数值范围
+        # warning: x is already in the range of 0.0 ~ 255.0
         x = torch.relu(self.conv1(x))
         x = torch.selu(self.conv2(x))
         x = self.pool(x)
