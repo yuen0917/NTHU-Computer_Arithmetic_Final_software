@@ -5,7 +5,7 @@ import numpy as np
 # ==========================================
 IMG_W = 28
 IMG_H = 28
-QUANT_SHIFT = 6  # Hardware Setting
+QUANT_SHIFT = 7  # Hardware Setting
 
 # File names
 FILE_IMG = "test_image.txt"
